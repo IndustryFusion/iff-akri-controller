@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {pod_name}
+  labels:
+    app: {pod_name}
+spec:
+  selector:
+    matchLabels:
+      app: {pod_name}
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: {pod_name}
+    spec:
+      serviceAccountName: devices-account
+      restartPolicy: Always
+      containers:
+        - name: busybox
+          image: docker.io/busybox:latest
+          imagePullPolicy: Always
+          command: ["sleep"]
+          args: ["100000000"]
+        - name: fusionopcuadataservice
+          env:
+            - name: OPC_USERNAME
+              value: ""
+            - name: OPC_PASSWORD
+              value: ""
+            - name: IFF_AGENT_URL
+              value: "127.0.0.1"
+            - name: IFF_AGENT_PORT
+              value: "7070"
+          resources:
+            requests:
+              {{`"{{PLACEHOLDER}}"`}} : "1"
+            limits:
+              {{`"{{PLACEHOLDER}}"`}} : "1"
+          image: docker.io/ibn40/fusionopcuadataservice:latest
+          imagePullPolicy: Always
+          volumeMounts:
+            - name: dataservice-machine-config
+              mountPath: /resources/config.json
+              subPath: config.json
+        - name: iff-iot-agent
+          env:
+            - name: ACTIVATION_MODE
+              value: "secret"
+          volumeMounts:
+            - name: devices-config-volume
+              mountPath: /volume/config
+            - name: devices-data-volume
+              mountPath: /volume/data
+            - name: devices-kube-volume
+              mountPath: /root/.kube/config
+          securityContext:
+            privileged: true
+            capabilities:
+              drop:
+                - all
+          image: docker.io/ibn40/iff-iot-agent:v0.0.2
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 41234
+              hostPort: 41234
+            - containerPort: 7070
+              hostPort: 7070
+      volumes:
+        - name: devices-config-volume
+          configMap:
+            name: {pod_name}-global-devices-config
+            items:
+              - key: config.json
+                path: config.json
+        - name: devices-data-volume
+          hostPath:
+            path: /var/device/data/
+        - name: devices-kube-volume
+          hostPath:
+            path: /var/kube/config.yaml
+        - name: dataservice-machine-config
+          configMap:
+            name: {pod_name}-app-config
+            items:
+            - key: config.json
+              path: config.json
+      imagePullSecrets:
+        - name: regcred

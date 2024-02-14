@@ -1,0 +1,38 @@
+apiVersion: v1
+data:
+  config.json: |
+    {
+      "fusionopcuadataservice": {
+          "specification": [
+              {
+                  "topic": "airtracker-74145/relay1",
+                  "key": [],
+                  "parameter": ["machine-state"]
+              },
+              {
+                  "topic": "airtracker-74145/dust",
+                  "key": [],
+                  "parameter": ["dustiness"]
+              },
+              {
+                  "topic": "airtracker-74145/temperature",
+                  "key": [],
+                  "parameter": ["temperature"]
+              },
+              {
+                  "topic": "airtracker-74145/humidity",
+                  "key": [],
+                  "parameter": ["humidity"]
+              },
+              {
+                  "topic": "airtracker-74145/noise",
+                  "key": [],
+                  "parameter": ["noise"]
+              }
+          ]
+      }
+    }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: {pod_name}-app-config
