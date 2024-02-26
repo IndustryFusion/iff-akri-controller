@@ -1,0 +1,8 @@
+apiVersion: v1
+data:
+  device.json: |
+    {device_json}
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: "{pod_name}-devices-data-config"

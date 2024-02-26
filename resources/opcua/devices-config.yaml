@@ -20,8 +20,8 @@ data:
                 },
                 "connector": {
                         "mqtt": {
-                                "host": {pdt_hostname},
-                                "port": {pdt_mqtt_port},
+                                "host": "pdt_hostname",
+                                "port": pdt_mqtt_port,
                                 "websockets": false,
                                 "qos": 1,
                                 "retain": false,
@@ -36,4 +36,4 @@ data:
 kind: ConfigMap
 metadata:
   creationTimestamp: null
-  name: {pod_name}-global-devices-config
+  name: pod_name-global-devices-config

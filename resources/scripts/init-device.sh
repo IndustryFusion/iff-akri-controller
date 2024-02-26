@@ -15,7 +15,9 @@
 #
 set -e
 # shellcheck disable=SC1091
-. common.sh
+
+export DATA_DIR=./data
+export DEVICE_FILE=${DATA_DIR}/device.json
 
 keycloakurl="http://keycloak.local/auth/realms"
 realmid="iff"
