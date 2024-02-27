@@ -1,7 +1,7 @@
 apiVersion: v1
 data:
   config.json: |
-    {
+        {
                 "data_directory": "./data",
                 "listeners": {
                         "udp_port": 41234,
@@ -20,12 +20,12 @@ data:
                 },
                 "connector": {
                         "mqtt": {
-                                "host": "pdt_hostname",
+                                "host": "pdt_mqtt_hostname",
                                 "port": pdt_mqtt_port,
                                 "websockets": false,
                                 "qos": 1,
                                 "retain": false,
-                                "secure": true,
+                                "secure": secure_config,
                                 "retries": 5,
                                 "strictSSL": false,
                                 "sparkplugB": true,

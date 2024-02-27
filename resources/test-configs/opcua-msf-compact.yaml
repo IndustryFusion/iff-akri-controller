@@ -49,7 +49,10 @@ app_config: |
       }
 
 pod_name: 'msf-compact-opcua'
-pdt_hostname: '192.168.49.154'
+pdt_mqtt_hostname: '192.168.49.154'
 pdt_mqtt_port: '1883'
 device_id: urn:ngsi-ld:asset:2:600
 gateway_id: urn:ngsi-ld:asset:2:600
+keycloak_url: http://keycloak.local/auth/realms
+realm_password: sajYGsO735fQRRijlrjkXDrjS7RYIKEJ
+secure_config: 'false'

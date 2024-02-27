@@ -1,7 +1,7 @@
 ip_address: ['192.168.49.151']
 protocol: opcua
 app_config: | 
-  {
+    {
        "fusionopcuadataservice": {
            "specification": [
               {
@@ -21,10 +21,13 @@ app_config: |
               }
            ]
        }
-     }
+    }
 
 pod_name: 'teka-aircube-opcua'
-pdt_hostname: '192.168.49.154'
+pdt_mqtt_hostname: '192.168.49.154'
 pdt_mqtt_port: '1883'
-device_id: urn:ngsi-ld:asset:2:601
-gateway_id: urn:ngsi-ld:asset:2:601
+secure_config: 'false'
+device_id: urn:ngsi-ld:asset:2:604
+gateway_id: urn:ngsi-ld:asset:2:604
+keycloak_url: http://keycloak.local/auth/realms
+realm_password: sajYGsO735fQRRijlrjkXDrjS7RYIKEJ

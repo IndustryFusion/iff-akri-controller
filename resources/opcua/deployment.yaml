@@ -1,22 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {pod_name}
+  name: pod_name
   labels:
-    app: {pod_name}
+    app: pod_name
 spec:
   selector:
     matchLabels:
-      app: {pod_name}
+      app: pod_name
   strategy:
     type: RollingUpdate
   template:
     metadata:
       labels:
-        app: {pod_name}
+        app: pod_name
     spec:
       serviceAccountName: devices-account
       restartPolicy: Always
+      initContainers:
+        - name: copy-config
+          image: alpine
+          command: ['sh', '-c', 'cp /config/* /volume/data/ && chmod -R 777 /volume/data/']
+          volumeMounts:
+            - name: devices-configmap-init
+              mountPath: /config
+            - name: devices-data-volume
+              mountPath: /volume/data/
       containers:
         - name: busybox
           image: docker.io/busybox:latest
@@ -35,9 +44,9 @@ spec:
               value: "7070"
           resources:
             requests:
-              {{`"{{PLACEHOLDER}}"`}} : "1"
+              PLACEHOLDER : "1"
             limits:
-              {{`"{{PLACEHOLDER}}"`}} : "1"
+              PLACEHOLDER : "1"
           image: docker.io/ibn40/fusionopcuadataservice:latest
           imagePullPolicy: Always
           volumeMounts:
@@ -52,7 +61,7 @@ spec:
             - name: devices-config-volume
               mountPath: /volume/config
             - name: devices-data-volume
-              mountPath: /volume/data
+              mountPath: /volume/data/
             - name: devices-kube-volume
               mountPath: /root/.kube/config
           securityContext:
@@ -70,21 +79,33 @@ spec:
       volumes:
         - name: devices-config-volume
           configMap:
-            name: {pod_name}-global-devices-config
+            name: pod_name-global-devices-config
             items:
               - key: config.json
                 path: config.json
+        - name: devices-configmap-init
+          configMap:
+            name: pod_name-devices-data-config
+            items:
+              - key: device.json
+                path: device.json
         - name: devices-data-volume
-          hostPath:
-            path: /var/device/data/
+          emptyDir: {}
+        # - name: devices-data-volume
+        #   hostPath:
+        #     path: /var/device/data/
         - name: devices-kube-volume
           hostPath:
-            path: /var/kube/config.yaml
+            path: /etc/rancher/rke2/rke2.yaml
         - name: dataservice-machine-config
           configMap:
-            name: {pod_name}-app-config
+            name: pod_name-app-config
             items:
             - key: config.json
               path: config.json
       imagePullSecrets:
         - name: regcred
+      hostAliases:
+        - hostnames:
+            - keycloak.local
+          ip: pdt_mqtt_hostname
