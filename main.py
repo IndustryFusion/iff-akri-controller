@@ -23,6 +23,7 @@ contents_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{path}'
 
 
 @kopf.on.create('Instance')
+@kopf.on.resume('Instance')
 def create_fn_pod(spec, name, namespace, logger, **kwargs):
     time.sleep(1)
 
