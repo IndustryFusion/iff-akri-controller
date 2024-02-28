@@ -7,10 +7,20 @@ import kubernetes
 import time
 import subprocess
 from resources.scripts.util import get_onboarding_token
+import requests
 
 logging.basicConfig(level=logging.DEBUG)
-yaml_config_file_path = './resources/test-configs/'
+
 resources = './resources/'
+# GitHub repository details
+owner = 'IndustryFusion'  # Replace with the repository owner's username
+repo = 'gateway-configs'  # Replace with the repository name
+path = ''  # Path within the repository (leave empty for the root directory)
+
+headers = {'Authorization': 'token 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'}
+# GitHub API URL for listing repository contents
+contents_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{path}'
+
 
 @kopf.on.create('Instance')
 def create_fn_pod(spec, name, namespace, logger, **kwargs):
@@ -18,17 +28,26 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
 
     if namespace == "devices":
         ip_from_akri = spec.get('brokerProperties').get('OPCUA_DISCOVERY_URL')
+        ip_from_akri = str(ip_from_akri).split('//')[1].split(':')[0]
         PLACEHOLDER = 'akri.sh/' + name
+        
+        # Make a request to get the repository contents
+        response = requests.get(contents_url, headers=headers)
+        response.raise_for_status()  # Raise an error if the request failed
 
-        if len(os.listdir(yaml_config_file_path)) != 0:
-            for file in os.listdir(yaml_config_file_path):
-                file_path = os.path.join(yaml_config_file_path, file)
+        if len(response.json()) != 0:
+            for file_info in response.json():
+                if file_info['type'] == 'file':
+                    # Get the file's download URL
+                    file_url = file_info['download_url']
+                    
+                    # Make a request to get the file contents
+                    file_response = requests.get(file_url)
+                    file_response.raise_for_status()
 
-                with open(file_path, 'r') as config_file:
-                    config_data = yaml.safe_load(config_file)
+                    config_data = yaml.safe_load(file_response.text)
 
-                for item in config_data['ip_address']:
-                    if item in ip_from_akri:
+                    if str(config_data['ip_address']) == str(ip_from_akri):
                         if config_data['protocol'] == 'opcua':
                             config_map = kubernetes.client.V1ConfigMap(
                                 api_version="v1",
@@ -114,5 +133,11 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                                 )
 
                                 logger.info(f"Deployment created successfully: {obj}")
+                        else:
+                            logger.info(f"Only opcua is currently supported for protocol value")
+                    else:
+                        logger.info(f"Searching gateway config files")
+                else:
+                    logger.info(f"No files found in root of GitHub repo")
         else:
             logger.info(f"No deployment queue file found in the aggregation location")
