@@ -28,7 +28,12 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
     time.sleep(1)
 
     if namespace == "devices":
-        ip_from_akri = spec.get('brokerProperties').get('OPCUA_DISCOVERY_URL')
+        if 'opc' in name:
+            ip_from_akri = spec.get('brokerProperties').get('OPCUA_DISCOVERY_URL')
+        elif 'mqtt' in name:
+            ip_from_akri = spec.get('brokerProperties').get('MQTT_BROKER_URI')
+            main_mqtt_topic = spec.get('brokerProperties').get('MQTT_TOPIC')
+
         ip_from_akri = str(ip_from_akri).split('//')[1].split(':')[0]
         PLACEHOLDER = 'akri.sh/' + name
         
@@ -49,7 +54,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                     config_data = yaml.safe_load(file_response.text)
 
                     if str(config_data['ip_address']) == str(ip_from_akri):
-                        if config_data['protocol'] == 'opcua':
+                        if config_data['protocol'] == 'opcua' or config_data['protocol'] == 'mqtt' and config_data['main_topic'] == main_mqtt_topic:
                             config_map = kubernetes.client.V1ConfigMap(
                                 api_version="v1",
                                 kind="ConfigMap",
@@ -67,7 +72,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
 
                             logger.info(f"App config created successfully: {obj}")
 
-                            with open(resources + config_data['protocol'] + '/devices-config.yaml', 'r') as edit_file:
+                            with open(resources + '/devices-config.yaml', 'r') as edit_file:
                                 edit_data = edit_file.read()
                                 formatted_yaml = edit_data.replace('pdt_mqtt_hostname', config_data['pdt_mqtt_hostname']).replace(
                                     'pdt_mqtt_port', config_data['pdt_mqtt_port']).replace('pod_name', config_data['pod_name']).replace('secure_config', config_data['secure_config'])
@@ -85,9 +90,9 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
 
 
                             get_onboarding_token(
-                                config_data['device_id'], config_data['gateway_id'], config_data['protocol'], config_data['keycloak_url'], config_data['realm_password'])
-                            # logger.info(f"The subprocess status: {status}")
-                            with open(resources + config_data['protocol'] + '/devices-secret.yaml', 'r') as edit_file:
+                                config_data['device_id'], config_data['gateway_id'], config_data['keycloak_url'], config_data['realm_password'])
+                            
+                            with open(resources + '/devices-secret.yaml', 'r') as edit_file:
                                 edit_data = edit_file.read()
                                 body_data=yaml.safe_load(edit_data)
                                 kopf.adopt(body_data)
@@ -120,9 +125,14 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
 
                                 logger.info(f"Device congfig created successfully: {obj}")
 
-                            with open(resources + config_data['protocol'] + '/deployment.yaml', 'r') as edit_file:
+                            with open(resources + '/deployment.yaml', 'r') as edit_file:
                                 edit_data = edit_file.read()
-                                formatted_yaml = edit_data.replace('pod_name', config_data['pod_name']).replace('pdt_mqtt_hostname', config_data['pdt_mqtt_hostname']).replace('PLACEHOLDER', PLACEHOLDER)
+                                formatted_yaml = edit_data.replace('pod_name', config_data['pod_name']).replace(
+                                    'pdt_mqtt_hostname', config_data['pdt_mqtt_hostname']).replace(
+                                        'PLACEHOLDER', PLACEHOLDER).replace('username_config', config_data['username_config']).replace(
+                                            'password_config', config_data['password_config']).replace(
+                                                        'dataservice_image_config', config_data['dataservice_image_config']).replace(
+                                                            'agentservice_image_config', config_data['agentservice_image_config'])
                                 
                                 body_data=yaml.safe_load(formatted_yaml)
                                 kopf.adopt(body_data)
@@ -135,7 +145,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
 
                                 logger.info(f"Deployment created successfully: {obj}")
                         else:
-                            logger.info(f"Only opcua is currently supported for protocol value")
+                            logger.info(f"Searching gateway config files")
                     else:
                         logger.info(f"Searching gateway config files")
                 else:

@@ -32,12 +32,12 @@ spec:
           imagePullPolicy: Always
           command: ["sleep"]
           args: ["100000000"]
-        - name: fusionopcuadataservice
+        - name: fusiondataservice
           env:
-            - name: OPC_USERNAME
-              value: ""
-            - name: OPC_PASSWORD
-              value: ""
+            - name: USERNAME
+              value: username_config
+            - name: PASSWORD
+              value: password_config
             - name: IFF_AGENT_URL
               value: "127.0.0.1"
             - name: IFF_AGENT_PORT
@@ -47,7 +47,7 @@ spec:
               PLACEHOLDER : "1"
             limits:
               PLACEHOLDER : "1"
-          image: docker.io/ibn40/fusionopcuadataservice:latest
+          image: docker.io/ibn40/dataservice_image_config
           imagePullPolicy: Always
           volumeMounts:
             - name: dataservice-machine-config
@@ -69,7 +69,7 @@ spec:
             capabilities:
               drop:
                 - all
-          image: docker.io/ibn40/iff-iot-agent:v0.0.2
+          image: docker.io/ibn40/agentservice_image_config
           imagePullPolicy: Always
           ports:
             - containerPort: 41234
