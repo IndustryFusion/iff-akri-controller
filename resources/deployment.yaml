@@ -31,7 +31,7 @@ spec:
           image: docker.io/busybox:latest
           imagePullPolicy: Always
           command: ["sleep"]
-          args: ["100000000"]
+          args: ["10000000000"]
         - name: fusiondataservice
           env:
             - name: USERNAME
@@ -53,7 +53,7 @@ spec:
             - name: dataservice-machine-config
               mountPath: /resources/config.json
               subPath: config.json
-        - name: iff-iot-agent
+        - name: iff-iot-agent-container
           env:
             - name: ACTIVATION_MODE
               value: "secret"
@@ -73,10 +73,14 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 41234
-              hostPort: 41234
             - containerPort: 7070
-              hostPort: 7070
       volumes:
+        - name: dataservice-machine-config
+          configMap:
+            name: pod_name-app-config
+            items:
+            - key: config.json
+              path: config.json
         - name: devices-config-volume
           configMap:
             name: pod_name-global-devices-config
@@ -91,21 +95,13 @@ spec:
                 path: device.json
         - name: devices-data-volume
           emptyDir: {}
-        # - name: devices-data-volume
-        #   hostPath:
-        #     path: /var/device/data/
         - name: devices-kube-volume
           hostPath:
             path: /etc/rancher/rke2/rke2.yaml
-        - name: dataservice-machine-config
-          configMap:
-            name: pod_name-app-config
-            items:
-            - key: config.json
-              path: config.json
       imagePullSecrets:
         - name: regcred
       hostAliases:
         - hostnames:
             - keycloak.local
           ip: pdt_mqtt_hostname
+      
