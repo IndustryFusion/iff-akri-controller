@@ -132,8 +132,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                                         'PLACEHOLDER', PLACEHOLDER).replace('username_config', config_data['username_config']).replace(
                                             'password_config', config_data['password_config']).replace(
                                                         'dataservice_image_config', config_data['dataservice_image_config']).replace(
-                                                        'agentservice_image_config', config_data['agentservice_image_config']).replace(
-                                                        'pdt_mqtt_hostname', config_data['pdt_mqtt_hostname'])
+                                                        'agentservice_image_config', config_data['agentservice_image_config'])
                                 
                                 body_data=yaml.safe_load(formatted_yaml)
                                 kopf.adopt(body_data)

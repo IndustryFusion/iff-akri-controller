@@ -103,5 +103,5 @@ spec:
       hostAliases:
         - hostnames:
             - keycloak.local
-          ip: pdt_mqtt_hostname
+          ip: 192.168.49.154
       
