@@ -60,7 +60,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                                 api_version="v1",
                                 kind="ConfigMap",
                                 metadata=kubernetes.client.V1ObjectMeta(name=config_data['pod_name'] + "-app-config"),
-                                data={"config.json": config_data['app_config']}
+                                data={"config.yaml": str(config_data['app_config'])}
                             )
 
                             kopf.adopt(config_map)

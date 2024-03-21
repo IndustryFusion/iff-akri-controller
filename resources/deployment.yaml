@@ -51,8 +51,8 @@ spec:
           imagePullPolicy: Always
           volumeMounts:
             - name: dataservice-machine-config
-              mountPath: /resources/config.json
-              subPath: config.json
+              mountPath: /resources/config.yaml
+              subPath: config.yaml
         - name: iff-iot-agent-container
           env:
             - name: ACTIVATION_MODE
@@ -79,8 +79,8 @@ spec:
           configMap:
             name: pod_name-app-config
             items:
-            - key: config.json
-              path: config.json
+            - key: config.yaml
+              path: config.yaml
         - name: devices-config-volume
           configMap:
             name: pod_name-global-devices-config
