@@ -76,7 +76,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                             with open(resources + '/devices-config.yaml', 'r') as edit_file:
                                 edit_data = edit_file.read()
                                 formatted_yaml = edit_data.replace('pdt_mqtt_hostname', config_data['pdt_mqtt_hostname']).replace(
-                                    'pdt_mqtt_port', config_data['pdt_mqtt_port']).replace('secure_config', config_data['secure_config']).replace('pod_name', config_data['pod_name'])
+                                    'pdt_mqtt_port', str(config_data['pdt_mqtt_port'])).replace('secure_config', str(config_data['secure_config']).lower()).replace('pod_name', config_data['pod_name'])
                                 
                                 body_data=yaml.safe_load(formatted_yaml)
                                 kopf.adopt(body_data)
@@ -129,8 +129,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                             with open(resources + '/deployment.yaml', 'r') as edit_file:
                                 edit_data = edit_file.read()
                                 formatted_yaml = edit_data.replace('pod_name', config_data['pod_name']).replace(
-                                        'PLACEHOLDER', PLACEHOLDER).replace('username_config', config_data['username_config']).replace(
-                                            'password_config', config_data['password_config']).replace(
+                                        'PLACEHOLDER', PLACEHOLDER).replace('username_config', str(config_data['username_config'])).replace('password_config', str(config_data['password_config'])).replace(
                                                         'dataservice_image_config', config_data['dataservice_image_config']).replace(
                                                         'agentservice_image_config', config_data['agentservice_image_config'])
                                 
