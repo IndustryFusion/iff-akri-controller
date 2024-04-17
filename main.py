@@ -36,7 +36,7 @@ resources = './resources/'
 owner = os.environ.get("GITHUB_OWNER")
 repo = os.environ.get("GITHUB_REPO")
 path = os.environ.get("GITHUB_PATH") if os.environ.get("GITHUB_PATH") != '' else ''
-token = os.environ.get("GITHUB_OWNER")
+token = os.environ.get("GITHUB_TOKEN")
 
 headers = {'Authorization': 'token ' + token }
 # GitHub API URL for listing repository contents
