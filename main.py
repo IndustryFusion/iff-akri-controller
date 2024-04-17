@@ -13,11 +13,16 @@ logging.basicConfig(level=logging.DEBUG)
 
 resources = './resources/'
 # GitHub repository details
-owner = 'IndustryFusion'  # Replace with the repository owner's username
-repo = 'gateway-configs'  # Replace with the repository name
-path = ''  # Path within the repository (leave empty for the root directory)
+# owner = 'IndustryFusion'  # Replace with the repository owner's username
+# repo = 'gateway-configs'  # Replace with the repository name
+# path = ''  # Path within the repository (leave empty for the root directory)
 
-headers = {'Authorization': 'token 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'}
+owner = os.environ.get("GITHUB_OWNER")
+repo = os.environ.get("GITHUB_REPO")
+path = os.environ.get("GITHUB_PATH") if os.environ.get("GITHUB_PATH") != '' else ''
+token = os.environ.get("GITHUB_OWNER")
+
+headers = {'Authorization': 'token ' + token }
 # GitHub API URL for listing repository contents
 contents_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{path}'
 
