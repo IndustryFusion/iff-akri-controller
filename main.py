@@ -27,7 +27,7 @@ import requests
 
 logging.basicConfig(level=logging.DEBUG)
 
-resources = './resources/'
+resources = './resources'
 # GitHub repository details
 # owner = 'IndustryFusion'  # Replace with the repository owner's username
 # repo = 'gateway-configs'  # Replace with the repository name
