@@ -13,3 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+set -e
+
+export CONFIG_DIR=../config
+export CONFIG_FILE=${CONFIG_DIR}/config.json
+export DATA_DIR=../data
+export DEVICE_FILE=${DATA_DIR}/device.json
+export DEVICES_NAMESPACE=devices
+export ONBOARDING_TOKEN_FILE=${DATA_DIR}/onboard-token.json
