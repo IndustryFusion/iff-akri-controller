@@ -14,8 +14,9 @@
 # limitations under the License.
 #
 set -e
-# shellcheck disable=SC1091
-. common.sh
+
+export DATA_DIR=./data
+export DEVICE_FILE=${DATA_DIR}/device.json
 
 keycloakurl="http://keycloak.local/auth/realms"
 realmid="iff"
@@ -50,8 +51,10 @@ else
   exit 1
 fi
 
- # shellcheck disable=2016
-urnPattern='^urn:[a-zA-Z0-9][a-zA-Z0-9-]{0,31}:[a-zA-Z0-9()+,\-\.:=@;$_!*%/?#]+$'
+# shellcheck disable=2016
+urnPattern='^urn:([a-zA-Z0-9][a-zA-Z0-9-]{0,31}):(.*)'
+echo "$deviceid"
+
 if echo "$deviceid" | grep -E -q "$urnPattern"; then
     echo "$deviceid is URN compliant."
 else

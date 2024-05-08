@@ -15,9 +15,10 @@
 #
 set -e
 
-# shellcheck disable=SC1091
-. common.sh
-
+export DATA_DIR=./data
+export DEVICE_FILE=${DATA_DIR}/device.json
+export DEVICES_NAMESPACE=devices
+export ONBOARDING_TOKEN_FILE=${DATA_DIR}/onboard-token.json
 
 secret_enabled=false;
 usage="Usage: $(basename "$0") [-p password] [-s secret-file-name] <username>\n"
