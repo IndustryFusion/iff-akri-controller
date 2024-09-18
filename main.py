@@ -25,7 +25,12 @@ import subprocess
 from resources.scripts.util import get_onboarding_token
 import requests
 
+# Configure the logging
+logging.basicConfig(level=logging.INFO)
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+
 
 resources = './resources'
 # GitHub repository details
@@ -38,7 +43,8 @@ repo = os.environ.get("GITHUB_REPO")
 path = os.environ.get("GITHUB_PATH") if os.environ.get("GITHUB_PATH") != '' else ''
 token = os.environ.get("GITHUB_TOKEN")
 
-headers = {'Authorization': 'Bearer ' + token }
+headers = {'Authorization': 'Bearer ' + token, "Accept": "application/vnd.github+json" }
+
 # GitHub API URL for listing repository contents
 contents_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{path}'
 
@@ -62,6 +68,11 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
         response = requests.get(contents_url, headers=headers)
         response.raise_for_status()  # Raise an error if the request failed
 
+        logger.info(f"IP from Akri: {ip_from_akri}")
+
+        # kopf.info("Initial response from GitHub GW config contents" + str(response), reason='SomeReason')
+        # kopf.info("IP from Akri" + str(ip_from_akri), reason='SomeReason')
+
         if len(response.json()) != 0:
             for file_info in response.json():
                 if file_info['type'] == 'file':
@@ -73,9 +84,13 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                     file_response.raise_for_status()
 
                     config_data = yaml.safe_load(file_response.text)
+                    logger.info(f"Config Data from GitHub: {config_data}")
+                    logger.info(f"IP address in Config from GitHub: {config_data['ip_address']}")
+                    # kopf.info("Config Data from GitHub" + str(config_data), reason='SomeReason')
+                    # kopf.info("IP address in Config from GitHub" + str(config_data['ip_address']), reason='SomeReason')
 
                     if str(config_data['ip_address']) == str(ip_from_akri):
-                        if config_data['protocol'] == 'opcua' or config_data['protocol'] == 'mqtt' and config_data['main_topic'] == main_mqtt_topic:
+                        if config_data['protocol'] == 'opc-ua' or config_data['protocol'] == 'mqtt' and config_data['main_topic'] == main_mqtt_topic:
 
                             config_map = kubernetes.client.V1ConfigMap(
                                 api_version="v1",
