@@ -197,3 +197,5 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                     logger.info(f"Searching gateway config files")
         else:
             logger.info(f"No deployment queue file found in the aggregation location")
+    
+    client.close()
