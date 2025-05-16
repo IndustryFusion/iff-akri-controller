@@ -94,10 +94,12 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                     # # Make a request to get the file contents
                     # file_response = requests.get(file_url)
                     # file_response.raise_for_status()
+                
+                logger.info(f"Document of Mongo: {file_info}")
+                config_data = yaml.safe_load(yaml.dump(file_info))
 
-                config_data = yaml.safe_load(file_info, default_flow_style=False)
-                logger.info(f"Config Data from GitHub: {config_data}")
-                logger.info(f"IP address in Config from GitHub: {config_data['ip_address']}")
+                logger.info(f"Config Data from Mongo: {config_data}")
+                logger.info(f"IP address in Config from Mongo: {config_data['ip_address']}")
                 # kopf.info("Config Data from GitHub" + str(config_data), reason='SomeReason')
                 # kopf.info("IP address in Config from GitHub" + str(config_data['ip_address']), reason='SomeReason')
 

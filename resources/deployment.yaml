@@ -63,7 +63,7 @@ spec:
               PLACEHOLDER : "1"
             limits:
               PLACEHOLDER : "1"
-          image: docker.io/ibn40/dataservice_image_config
+          image: dataservice_image_config
           imagePullPolicy: Always
           volumeMounts:
             - name: dataservice-machine-config
@@ -85,7 +85,7 @@ spec:
             capabilities:
               drop:
                 - all
-          image: docker.io/ibn40/agentservice_image_config
+          image: agentservice_image_config
           imagePullPolicy: Always
           ports:
             - containerPort: 41234
