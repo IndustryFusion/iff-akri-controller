@@ -60,33 +60,64 @@ collection = client[mongoDbName]["onboardings"]
 
 with collection.watch(pipeline) as stream:
     for change in stream:
-        doc = change["fullDocument"]
-        print("New document inserted:", doc)
+        operation_type = change["operationType"]
+        doc = change.get("fullDocument")  # always populated due to updateLookup
+
+        if not doc:
+            continue
 
         if doc.get("gateway_id") == deviceId:
             print("Match found, creating CR...")
-            k8s.create_namespaced_custom_object(
-                group="myorg.io",
-                version="v1",
-                namespace="devices",
-                plural="mongoinserts",
-                body={
-                    "apiVersion": "myorg.io/v1",
-                    "kind": "MongoInsert",
-                    "metadata": {
-                        "generateName": "mongo-insert-"
-                    },
-                    "spec": {
-                        "db": "your_db",
-                        "collection": "your_collection",
-                        "document": doc
+            if operation_type == "insert":
+                k8s.create_namespaced_custom_object(
+                    group="myorg.io",
+                    version="v1",
+                    namespace="devices",
+                    plural="mongoinserts",
+                    body={
+                        "apiVersion": "myorg.io/v1",
+                        "kind": "MongoInsert",
+                        "metadata": {
+                            "generateName": "mongo-insert-" + str(doc['_id'])
+                        },
+                        "spec": {
+                            "db": "factory",
+                            "collection": "onboardings",
+                            "document": str(doc['_id'])
+                        }
                     }
-                }
-            )
+                )
+            elif operation_type in ("update", "replace"):
+                k8s.patch_namespaced_custom_object(
+                    group="myorg.io",
+                    version="v1",
+                    namespace="devices",
+                    plural="mongoinserts",
+                    name="mongo-insert-" + str(doc['_id']),
+                    body={
+                        "spec": {
+                            "db": "factory",
+                            "collection": "onboardings",
+                            "document": str(doc['_id'])
+                        }
+                    }
+                )
+            elif operation_type == "delete":
+                k8s.delete_namespaced_custom_object(
+                    group="myorg.io",
+                    version="v1",
+                    namespace="devices",
+                    plural="mongoinserts",
+                    name="mongo-insert-" + str(doc['_id'])
+                )
+            
         else:
             print("env mismatch, ignoring.")
 
+
 @kopf.on.create('myorg.io', 'v1', 'mongoinserts')
+@kopf.on.update('myorg.io', 'v1', 'mongoinserts')
+@kopf.on.delete('myorg.io', 'v1', 'mongoinserts')
 def create_fn_pod(spec, name, namespace, logger, **kwargs):
     time.sleep(1)
 
