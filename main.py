@@ -190,8 +190,7 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
 
                 with open(resources + '/deployment.yaml', 'r') as edit_file:
                     edit_data = edit_file.read()
-                    formatted_yaml = edit_data.replace('pod_name', config_data['pod_name']).replace(
-                            'PLACEHOLDER', PLACEHOLDER).replace('username_config', str(config_data['username_config'])).replace('password_config', str(config_data['password_config'])).replace(
+                    formatted_yaml = edit_data.replace('pod_name', config_data['pod_name']).replace('url_config', str(config_data['ip_address'])).replace('username_config', str(config_data['username_config'])).replace('password_config', str(config_data['password_config'])).replace(
                                             'dataservice_image_config', config_data['dataservice_image_config']).replace(
                                             'agentservice_image_config', config_data['agentservice_image_config'])
                     

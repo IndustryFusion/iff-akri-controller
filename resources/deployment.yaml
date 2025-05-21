@@ -54,15 +54,12 @@ spec:
               value: username_config
             - name: PASSWORD
               value: password_config
+            - name: PROTOCOL_URL
+              value: url_config
             - name: IFF_AGENT_URL
               value: "127.0.0.1"
             - name: IFF_AGENT_PORT
               value: "7070"
-          resources:
-            requests:
-              PLACEHOLDER : "1"
-            limits:
-              PLACEHOLDER : "1"
           image: dataservice_image_config
           imagePullPolicy: Always
           volumeMounts:
