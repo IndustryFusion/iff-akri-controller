@@ -25,6 +25,8 @@ import subprocess
 from resources.scripts.util import get_onboarding_token
 import requests
 from pymongo import MongoClient
+import threading
+from datetime import datetime
 
 # Configure the logging
 logging.basicConfig(level=logging.INFO)
@@ -54,74 +56,94 @@ client = MongoClient(mongoUrl)
 # # GitHub API URL for listing repository contents
 # contents_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{path}'
 
-# Watch specific collection for insert events
-pipeline = [{'$match': {'operationType': 'insert'}}]
-collection = client[mongoDbName]["onboardings"]
+def start_mongo_stream_listener():
+    while True:
+        try:
+            # Watch specific collection for insert events
+            pipeline = [{'$match': {'operationType': {'$in': ['insert', 'update', 'replace', 'delete']}}}]
+            collection = client[mongoDbName]["onboardings"]
 
-with collection.watch(pipeline) as stream:
-    for change in stream:
-        operation_type = change["operationType"]
-        doc = change.get("fullDocument")  # always populated due to updateLookup
+            with collection.watch(pipeline, full_document='updateLookup') as stream:
+                for change in stream:
+                    operation_type = change["operationType"]
+                    print(f"Operation Type: {operation_type}")
 
-        if not doc:
-            continue
+                    if operation_type == "delete":
+                        doc_id = change["documentKey"]["_id"]
+                        print(f"Document ID: {doc_id}")
+                        k8s.delete_namespaced_custom_object(
+                            group="myorg.io",
+                            version="v1",
+                            namespace="devices",
+                            plural="mongoinserts",
+                            name="mongo-insert-" + str(doc_id)
+                        )
 
-        if doc.get("gateway_id") == deviceId:
-            print("Match found, creating CR...")
-            if operation_type == "insert":
-                k8s.create_namespaced_custom_object(
-                    group="myorg.io",
-                    version="v1",
-                    namespace="devices",
-                    plural="mongoinserts",
-                    body={
-                        "apiVersion": "myorg.io/v1",
-                        "kind": "MongoInsert",
-                        "metadata": {
-                            "generateName": "mongo-insert-" + str(doc['_id'])
-                        },
-                        "spec": {
-                            "db": "factory",
-                            "collection": "onboardings",
-                            "document": str(doc['_id'])
-                        }
-                    }
-                )
-            elif operation_type in ("update", "replace"):
-                k8s.patch_namespaced_custom_object(
-                    group="myorg.io",
-                    version="v1",
-                    namespace="devices",
-                    plural="mongoinserts",
-                    name="mongo-insert-" + str(doc['_id']),
-                    body={
-                        "spec": {
-                            "db": "factory",
-                            "collection": "onboardings",
-                            "document": str(doc['_id'])
-                        }
-                    }
-                )
-            elif operation_type == "delete":
-                k8s.delete_namespaced_custom_object(
-                    group="myorg.io",
-                    version="v1",
-                    namespace="devices",
-                    plural="mongoinserts",
-                    name="mongo-insert-" + str(doc['_id'])
-                )
-            
-        else:
-            print("env mismatch, ignoring.")
+                    # always populated due to updateLookup
+                    else:
+                        doc = change.get("fullDocument")  
+                        if not doc:
+                            continue
+
+                        if doc.get("gateway_id") == deviceId:
+                            print("Match found, creating CR...")
+                            if operation_type == "insert":
+                                k8s.create_namespaced_custom_object(
+                                    group="myorg.io",
+                                    version="v1",
+                                    namespace="devices",
+                                    plural="mongoinserts",
+                                    body={
+                                        "apiVersion": "myorg.io/v1",
+                                        "kind": "MongoInsert",
+                                        "metadata": {
+                                            "name": "mongo-insert-" + str(doc['_id'])
+                                        },
+                                        "spec": {
+                                            "db": "factory",
+                                            "collection": "onboardings",
+                                            "document": str(doc['_id'])
+                                        }
+                                    }
+                                )
+                            elif operation_type == "replace":
+                                print("Updating CR...")
+                                k8s.patch_namespaced_custom_object(
+                                    group="myorg.io",
+                                    version="v1",
+                                    namespace="devices",
+                                    plural="mongoinserts",
+                                    name="mongo-insert-" + str(doc['_id']),
+                                    body={
+                                        "spec": {
+                                            "db": "factory",
+                                            "collection": "onboardings",
+                                            "document": str(doc['_id']) + datetime.now().isoformat()
+                                        }
+                                    }
+                                )
+                            
+                        else:
+                            print("env mismatch, ignoring.")
+        except Exception as e:
+            print(f"Stream failed: {e}, retrying in 5 seconds...")
+            time.sleep(2)
+
+
+@kopf.on.startup()
+def startup_fn(logger, **_):
+    logger.info("Kopf operator started and listening.")
+    thread = threading.Thread(target=start_mongo_stream_listener, daemon=True)
+    thread.start()
 
 
 @kopf.on.create('myorg.io', 'v1', 'mongoinserts')
-@kopf.on.update('myorg.io', 'v1', 'mongoinserts')
-@kopf.on.delete('myorg.io', 'v1', 'mongoinserts')
-def create_fn_pod(spec, name, namespace, logger, **kwargs):
+def create_fn_pod(name, namespace, logger, **kwargs):
     time.sleep(1)
+    logger.info(f"Creating pod {name} in namespace {namespace}")
 
     if namespace == "devices":
+        collection = client[mongoDbName]["onboardings"]
         documents = list(collection.find({"gateway_id": deviceId}, {"_id": 0}))
         PLACEHOLDER = 'akri.sh/' + name
         
@@ -237,5 +259,65 @@ def create_fn_pod(spec, name, namespace, logger, **kwargs):
                     logger.info(f"Data Service Deployment created successfully: {obj}")
         else:
             logger.info(f"No deployment queue file found in the aggregation location")
-    
-    client.close()
+
+
+@kopf.on.update('myorg.io', 'v1', 'mongoinserts')    
+def update_fn_pod(name, namespace, logger, **kwargs):
+    time.sleep(1)
+    logger.info(f"Update triggered for {name}. Recreating dependent resources...")
+
+    if namespace == "devices":
+        # Call the delete logic
+        delete_fn_pod(name=name, namespace=namespace, logger=logger, **kwargs)
+
+        # Sleep briefly to avoid race conditions (optional but helpful)
+        time.sleep(10)
+
+        # Call the create logic
+        create_fn_pod(name=name, namespace=namespace, logger=logger, **kwargs)
+
+        logger.info(f"Update finished for {name}.")
+
+
+@kopf.on.delete('myorg.io', 'v1', 'mongoinserts')    
+def delete_fn_pod(name, namespace, logger, **kwargs):
+    time.sleep(1)
+    logger.info(f"Creating pod {name} in namespace {namespace}")
+
+    if namespace == "devices":
+        collection = client[mongoDbName]["onboardings"]
+        documents = list(collection.find({"gateway_id": deviceId}, {"_id": 0}))
+        if len(documents) != 0:
+            for file_info in documents:
+                logger.info(f"Document of Mongo: {file_info}")
+                config_data = yaml.safe_load(yaml.dump(file_info))
+
+                try:
+                    api = kubernetes.client.CoreV1Api()
+                    api.delete_namespaced_config_map(
+                        name=config_data['pod_name'] + "-app-config",
+                        namespace=namespace,
+                        body=kubernetes.client.V1DeleteOptions()
+                    )
+                    api.delete_namespaced_config_map(
+                        name=config_data['pod_name'] + "-global-devices-config",
+                        namespace=namespace,
+                        body=kubernetes.client.V1DeleteOptions()
+                    )
+                    api.delete_namespaced_config_map(
+                        name=config_data['pod_name'] + "-devices-data-config",
+                        namespace=namespace,
+                        body=kubernetes.client.V1DeleteOptions()
+                    )
+                    api2 = kubernetes.client.AppsV1Api()
+                    api2.delete_namespaced_deployment(
+                        name=config_data['pod_name'],
+                        namespace=namespace,
+                        body=kubernetes.client.V1DeleteOptions()
+                    )
+                    logger.info(f"ConfigMaps deleted.")
+                except kubernetes.client.exceptions.ApiException as e:
+                    if e.status == 404:
+                        logger.warning(f"Not found, skipping delete.")
+                    else:
+                        raise
