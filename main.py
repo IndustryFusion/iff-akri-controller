@@ -68,7 +68,7 @@ with collection.watch(pipeline) as stream:
             k8s.create_namespaced_custom_object(
                 group="myorg.io",
                 version="v1",
-                namespace="default",
+                namespace="devices",
                 plural="mongoinserts",
                 body={
                     "apiVersion": "myorg.io/v1",
