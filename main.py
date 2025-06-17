@@ -106,7 +106,7 @@ def start_mongo_stream_listener():
                                         }
                                     }
                                 )
-                            elif operation_type == "replace":
+                            elif operation_type == "update":
                                 print("Updating CR...")
                                 k8s.patch_namespaced_custom_object(
                                     group="myorg.io",
@@ -271,7 +271,7 @@ def update_fn_pod(name, namespace, logger, **kwargs):
         delete_fn_pod(name=name, namespace=namespace, logger=logger, **kwargs)
 
         # Sleep briefly to avoid race conditions (optional but helpful)
-        time.sleep(10)
+        time.sleep(30)
 
         # Call the create logic
         create_fn_pod(name=name, namespace=namespace, logger=logger, **kwargs)
