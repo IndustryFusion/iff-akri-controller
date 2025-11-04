@@ -57,77 +57,89 @@ client = MongoClient(mongoUrl)
 # contents_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{path}'
 
 def start_mongo_stream_listener():
+    last_check = {}  # Track last seen state for each document
+    
     while True:
         try:
-            # Watch specific collection for insert events
-            pipeline = [{'$match': {'operationType': {'$in': ['insert', 'update', 'replace', 'delete']}}}]
             collection = client[mongoDbName]["onboardings"]
-
-            with collection.watch(pipeline, full_document='updateLookup') as stream:
-                for change in stream:
-                    operation_type = change["operationType"]
-                    print(f"Operation Type: {operation_type}")
-
-                    if operation_type == "delete":
-                        doc_id = change["documentKey"]["_id"]
-                        print(f"Document ID: {doc_id}")
+            # Get current documents matching our device_id
+            current_docs = list(collection.find({"device_id": deviceId}))
+            current_ids = {str(doc['_id']): doc for doc in current_docs}
+            
+            # Check for new or updated documents
+            for doc_id, doc in current_ids.items():
+                doc_hash = hash(str(sorted(doc.items())))
+                
+                if doc_id not in last_check:
+                    # New document - create CR
+                    print(f"New document found: {doc_id}")
+                    try:
+                        k8s.create_namespaced_custom_object(
+                            group="myorg.io",
+                            version="v1",
+                            namespace="devices",
+                            plural="mongoinserts",
+                            body={
+                                "apiVersion": "myorg.io/v1",
+                                "kind": "MongoInsert",
+                                "metadata": {
+                                    "name": "mongo-insert-" + doc_id
+                                },
+                                "spec": {
+                                    "db": "factory",
+                                    "collection": "onboardings",
+                                    "document": doc_id
+                                }
+                            }
+                        )
+                        last_check[doc_id] = doc_hash
+                    except kubernetes.client.exceptions.ApiException as e:
+                        if e.status != 409:  # Ignore if already exists
+                            print(f"Error creating CR: {e}")
+                
+                elif last_check[doc_id] != doc_hash:
+                    # Document updated - patch CR
+                    print(f"Document updated: {doc_id}")
+                    try:
+                        k8s.patch_namespaced_custom_object(
+                            group="myorg.io",
+                            version="v1",
+                            namespace="devices",
+                            plural="mongoinserts",
+                            name="mongo-insert-" + doc_id,
+                            body={
+                                "spec": {
+                                    "db": "factory",
+                                    "collection": "onboardings",
+                                    "document": doc_id + "-" + datetime.now().isoformat()
+                                }
+                            }
+                        )
+                        last_check[doc_id] = doc_hash
+                    except kubernetes.client.exceptions.ApiException as e:
+                        print(f"Error updating CR: {e}")
+            
+            # Check for deleted documents
+            for doc_id in list(last_check.keys()):
+                if doc_id not in current_ids:
+                    print(f"Document deleted: {doc_id}")
+                    try:
                         k8s.delete_namespaced_custom_object(
                             group="myorg.io",
                             version="v1",
                             namespace="devices",
                             plural="mongoinserts",
-                            name="mongo-insert-" + str(doc_id)
+                            name="mongo-insert-" + doc_id
                         )
-
-                    # always populated due to updateLookup
-                    else:
-                        doc = change.get("fullDocument")  
-                        if not doc:
-                            continue
-
-                        if doc.get("gateway_id") == deviceId:
-                            print("Match found, creating CR...")
-                            if operation_type == "insert":
-                                k8s.create_namespaced_custom_object(
-                                    group="myorg.io",
-                                    version="v1",
-                                    namespace="devices",
-                                    plural="mongoinserts",
-                                    body={
-                                        "apiVersion": "myorg.io/v1",
-                                        "kind": "MongoInsert",
-                                        "metadata": {
-                                            "name": "mongo-insert-" + str(doc['_id'])
-                                        },
-                                        "spec": {
-                                            "db": "factory",
-                                            "collection": "onboardings",
-                                            "document": str(doc['_id'])
-                                        }
-                                    }
-                                )
-                            elif operation_type == "update":
-                                print("Updating CR...")
-                                k8s.patch_namespaced_custom_object(
-                                    group="myorg.io",
-                                    version="v1",
-                                    namespace="devices",
-                                    plural="mongoinserts",
-                                    name="mongo-insert-" + str(doc['_id']),
-                                    body={
-                                        "spec": {
-                                            "db": "factory",
-                                            "collection": "onboardings",
-                                            "document": str(doc['_id']) + datetime.now().isoformat()
-                                        }
-                                    }
-                                )
-                            
-                        else:
-                            print("env mismatch, ignoring.")
+                        del last_check[doc_id]
+                    except kubernetes.client.exceptions.ApiException as e:
+                        if e.status != 404:  # Ignore if already deleted
+                            print(f"Error deleting CR: {e}")
+            
         except Exception as e:
-            print(f"Stream failed: {e}, retrying in 5 seconds...")
-            time.sleep(2)
+            print(f"Polling failed: {e}, retrying in 10 seconds...")
+        
+        time.sleep(10)  # Poll every 10 seconds
 
 
 @kopf.on.startup()
