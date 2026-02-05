@@ -147,6 +147,41 @@ def startup_fn(logger, **_):
     logger.info("Kopf operator started and listening.")
     thread = threading.Thread(target=start_mongo_stream_listener, daemon=True)
     thread.start()
+    
+    # Trigger updates on restart by patching existing CRs with a timestamp annotation
+    try:
+        logger.info("Checking for existing CRs to trigger updates on restart...")
+        existing_crs = k8s.list_namespaced_custom_object(
+            group="myorg.io",
+            version="v1",
+            namespace="devices",
+            plural="mongoinserts"
+        )
+        
+        restart_timestamp = datetime.now().isoformat()
+        for cr in existing_crs.get('items', []):
+            cr_name = cr['metadata']['name']
+            try:
+                logger.info(f"Triggering update for CR: {cr_name}")
+                k8s.patch_namespaced_custom_object(
+                    group="myorg.io",
+                    version="v1",
+                    namespace="devices",
+                    plural="mongoinserts",
+                    name=cr_name,
+                    body={
+                        "metadata": {
+                            "annotations": {
+                                "controller-restart-trigger": restart_timestamp
+                            }
+                        }
+                    }
+                )
+                logger.info(f"Successfully triggered update for CR: {cr_name}")
+            except Exception as e:
+                logger.error(f"Failed to update CR {cr_name}: {e}")
+    except Exception as e:
+        logger.error(f"Failed to list existing CRs: {e}")
 
 
 @kopf.on.create('myorg.io', 'v1', 'mongoinserts')

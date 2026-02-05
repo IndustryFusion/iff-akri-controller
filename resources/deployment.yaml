@@ -45,7 +45,7 @@ spec:
       containers:
         - name: busybox
           image: docker.io/busybox:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           command: ["sleep"]
           args: ["10000000000"]
         - name: fusiondataservice
@@ -61,7 +61,7 @@ spec:
             - name: IFF_AGENT_PORT
               value: "7070"
           image: dataservice_image_config
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: dataservice-machine-config
               mountPath: /resources/config.yaml
@@ -83,7 +83,7 @@ spec:
               drop:
                 - all
           image: agentservice_image_config
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 41234
             - containerPort: 7070
