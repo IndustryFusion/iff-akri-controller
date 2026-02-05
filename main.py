@@ -318,7 +318,7 @@ def update_fn_pod(name, namespace, logger, **kwargs):
         delete_fn_pod(name=name, namespace=namespace, logger=logger, **kwargs)
 
         # Sleep briefly to avoid race conditions (optional but helpful)
-        time.sleep(30)
+        time.sleep(60)
 
         # Call the create logic
         create_fn_pod(name=name, namespace=namespace, logger=logger, **kwargs)
