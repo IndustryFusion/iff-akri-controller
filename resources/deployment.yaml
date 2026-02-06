@@ -114,7 +114,6 @@ spec:
             path: /etc/rancher/rke2/rke2.yaml
       imagePullSecrets:
         - name: regcred
-      hostNetwork: true
       # hostAliases:
       #   - hostnames:
       #       - keycloak.local
