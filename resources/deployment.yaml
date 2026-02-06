@@ -36,6 +36,7 @@ spec:
       initContainers:
         - name: copy-config
           image: alpine
+          imagePullPolicy: IfNotPresent
           command: ['sh', '-c', 'cp /config/* /volume/data/ && chmod -R 777 /volume/data/']
           volumeMounts:
             - name: devices-configmap-init
