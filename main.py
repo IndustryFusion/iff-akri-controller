@@ -49,6 +49,7 @@ resources = './resources'
 mongoUrl = os.environ.get("FACTORY_MONGO_URL")
 mongoDbName = os.environ.get("FACTORY_MONGO_DB_NAME")
 deviceId = os.environ.get("DEVICE_IFRIC_ID")
+serverIp = os.environ.get("DEVICE_IP_ADDRESS")
 # Replace with your MongoDB connection string
 client = MongoClient(mongoUrl)
 # headers = {'Authorization': 'Bearer ' + token, "Accept": "application/vnd.github+json" }
@@ -292,7 +293,7 @@ def create_fn_pod(name, namespace, logger, **kwargs):
                     edit_data = edit_file.read()
                     formatted_yaml = edit_data.replace('pod_name', config_data['pod_name']).replace('url_config', str(config_data['ip_address'])).replace('username_config', str(config_data['username_config'])).replace('password_config', str(config_data['password_config'])).replace(
                                             'dataservice_image_config', config_data['dataservice_image_config']).replace(
-                                            'agentservice_image_config', config_data['agentservice_image_config'])
+                                            'agentservice_image_config', config_data['agentservice_image_config']).replace('server_ip', serverIp)
                     
                     body_data=yaml.safe_load(formatted_yaml)
                     kopf.adopt(body_data)
