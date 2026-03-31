@@ -61,6 +61,8 @@ spec:
               value: "127.0.0.1"
             - name: IFF_AGENT_PORT
               value: "7070"
+            - name: SAMPLING_RATE
+              value: "0.5"
           image: dataservice_image_config
           imagePullPolicy: IfNotPresent
           volumeMounts:
