@@ -316,8 +316,8 @@ def create_fn_pod(name, namespace, logger, **kwargs):
                     # Handle secondary data service replacement
                     if config_data.get('secondary_app_config'):
                         # Replace secondary service fields
-                        formatted_yaml = formatted_yaml.replace('url_config-secondary', str(config_data['secondary_ip_address'])).replace(
-                                                'dataservice_image_config-secondary', config_data['secondary_dataservice_image_config'])
+                        formatted_yaml = formatted_yaml.replace('secondary_url', str(config_data['secondary_ip_address'])).replace(
+                                                'secondary_image', config_data['secondary_dataservice_image_config'])
                     
                     body_data=yaml.safe_load(formatted_yaml)
                     

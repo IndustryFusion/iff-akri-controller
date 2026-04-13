@@ -76,14 +76,14 @@ spec:
             - name: PASSWORD
               value: password_config
             - name: PROTOCOL_URL
-              value: url_config-secondary
+              value: secondary_url
             - name: IFF_AGENT_URL
               value: "127.0.0.1"
             - name: IFF_AGENT_PORT
               value: "7070"
             - name: SAMPLING_RATE
               value: "0.1"
-          image: dataservice_image_config-secondary
+          image: secondary_image
           imagePullPolicy: IfNotPresent
           volumeMounts:
             - name: dataservice-machine-config-secondary
