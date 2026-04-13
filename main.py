@@ -235,6 +235,25 @@ def create_fn_pod(name, namespace, logger, **kwargs):
 
                 logger.info(f"App config created successfully: {obj}")
 
+                # Create secondary app config if present
+                if config_data.get('secondary_app_config'):
+                    config_map_secondary = kubernetes.client.V1ConfigMap(
+                        api_version="v1",
+                        kind="ConfigMap",
+                        metadata=kubernetes.client.V1ObjectMeta(name=config_data['pod_name'] + "-app-config-secondary"),
+                        data={"config.yaml": str(config_data['secondary_app_config'])}
+                    )
+
+                    kopf.adopt(config_map_secondary)
+
+                    api = kubernetes.client.CoreV1Api()
+                    obj = api.create_namespaced_config_map(
+                        namespace=namespace,
+                        body=config_map_secondary
+                    )
+
+                    logger.info(f"Secondary app config created successfully: {obj}")
+
                 with open(resources + '/devices-config.yaml', 'r') as edit_file:
                     edit_data = edit_file.read()
                     formatted_yaml = edit_data.replace('pdt_mqtt_hostname', config_data['pdt_mqtt_hostname']).replace(
@@ -294,7 +313,32 @@ def create_fn_pod(name, namespace, logger, **kwargs):
                                             'dataservice_image_config', config_data['dataservice_image_config']).replace(
                                             'agentservice_image_config', config_data['agentservice_image_config'])
                     
+                    # Handle secondary data service replacement
+                    if config_data.get('secondary_app_config'):
+                        # Replace secondary service fields
+                        formatted_yaml = formatted_yaml.replace('url_config-secondary', str(config_data['secondary_ip_address'])).replace(
+                                                'dataservice_image_config-secondary', config_data['secondary_dataservice_image_config'])
+                    
                     body_data=yaml.safe_load(formatted_yaml)
+                    
+                    # Remove secondary container and volume if secondary_app_config is not present
+                    if not config_data.get('secondary_app_config'):
+                        # Remove secondary container
+                        containers = body_data['spec']['template']['spec']['containers']
+                        body_data['spec']['template']['spec']['containers'] = [
+                            c for c in containers if c['name'] != 'fusiondataservice-secondary'
+                        ]
+                        
+                        # Remove secondary volume
+                        volumes = body_data['spec']['template']['spec']['volumes']
+                        body_data['spec']['template']['spec']['volumes'] = [
+                            v for v in volumes if v['name'] != 'dataservice-machine-config-secondary'
+                        ]
+                        
+                        logger.info(f"Secondary data service excluded from deployment")
+                    else:
+                        logger.info(f"Secondary data service included in deployment")
+                    
                     kopf.adopt(body_data)
 
                     api = kubernetes.client.AppsV1Api()
@@ -346,6 +390,22 @@ def delete_fn_pod(name, namespace, logger, **kwargs):
                         namespace=namespace,
                         body=kubernetes.client.V1DeleteOptions()
                     )
+                    
+                    # Delete secondary app config if it exists
+                    if config_data.get('secondary_app_config'):
+                        try:
+                            api.delete_namespaced_config_map(
+                                name=config_data['pod_name'] + "-app-config-secondary",
+                                namespace=namespace,
+                                body=kubernetes.client.V1DeleteOptions()
+                            )
+                            logger.info(f"Secondary app config deleted.")
+                        except kubernetes.client.exceptions.ApiException as e:
+                            if e.status == 404:
+                                logger.warning(f"Secondary config not found, skipping delete.")
+                            else:
+                                raise
+                    
                     api.delete_namespaced_config_map(
                         name=config_data['pod_name'] + "-global-devices-config",
                         namespace=namespace,
