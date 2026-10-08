@@ -56,6 +56,16 @@ client = MongoClient(mongoUrl)
 # # GitHub API URL for listing repository contents
 # contents_url = f'https://api.github.com/repos/{owner}/{repo}/contents/{path}'
 
+def app_config_yaml(app_config):
+    # The data services read config.yaml with yaml.safe_load. safe_dump round-trips
+    # every value exactly; str() wrote a Python repr, which loses None, numbers like
+    # 1e-05 and text with quotes or backslashes. A config already stored as text is
+    # written as it is.
+    if isinstance(app_config, str):
+        return app_config
+    return yaml.safe_dump(app_config, sort_keys=False, allow_unicode=True)
+
+
 def start_mongo_stream_listener():
     last_check = {}  # Track last seen state for each document
     
@@ -94,7 +104,11 @@ def start_mongo_stream_listener():
                         )
                         last_check[doc_id] = doc_hash
                     except kubernetes.client.exceptions.ApiException as e:
-                        if e.status != 409:  # Ignore if already exists
+                        if e.status == 409:
+                            # CR already exists (e.g. after a controller restart): track the
+                            # document so later edits are detected and redeployed
+                            last_check[doc_id] = doc_hash
+                        else:
                             print(f"Error creating CR: {e}")
                 
                 elif last_check[doc_id] != doc_hash:
@@ -222,7 +236,7 @@ def create_fn_pod(name, namespace, logger, **kwargs):
                     api_version="v1",
                     kind="ConfigMap",
                     metadata=kubernetes.client.V1ObjectMeta(name=config_data['pod_name'] + "-app-config"),
-                    data={"config.yaml": str(config_data['app_config'])}
+                    data={"config.yaml": app_config_yaml(config_data['app_config'])}
                 )
 
                 kopf.adopt(config_map)
@@ -241,7 +255,7 @@ def create_fn_pod(name, namespace, logger, **kwargs):
                         api_version="v1",
                         kind="ConfigMap",
                         metadata=kubernetes.client.V1ObjectMeta(name=config_data['pod_name'] + "-app-config-secondary"),
-                        data={"config.yaml": str(config_data['secondary_app_config'])}
+                        data={"config.yaml": app_config_yaml(config_data['secondary_app_config'])}
                     )
 
                     kopf.adopt(config_map_secondary)
