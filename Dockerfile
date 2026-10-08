@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-FROM python:3.8-slim-bullseye
+FROM python:3.8-slim-bookworm
 
 RUN apt-get update && apt-get install -y jq bash curl && apt-get clean && rm -rf /var/lib/apt/lists/*
 
