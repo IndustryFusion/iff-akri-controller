@@ -6,7 +6,7 @@ cachetools==5.3.2
 certifi==2024.2.2
 charset-normalizer==3.3.2
 click==8.1.7
-dnspython==2.6.1
+dnspython==2.9.2
 frozenlist==1.4.1
 google-auth==2.27.0
 idna==3.6
