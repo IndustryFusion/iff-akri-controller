@@ -14,16 +14,40 @@
 # limitations under the License.
 #
 
-FROM python:3.8-slim-bookworm
+# ---- builder stage: build the venv ----
+FROM python:3.12.16-slim-bookworm AS builder
 
-RUN apt-get update && apt-get install -y jq bash curl && apt-get clean && rm -rf /var/lib/apt/lists/*
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 COPY requirements.txt .
 
-RUN pip3 install -r requirements.txt
+RUN pip install -r requirements.txt
+
+# ---- runtime stage: slim image with the venv copied in ----
+FROM python:3.12.16-slim-bookworm
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends jq bash curl \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Non-root runtime user
+RUN useradd -m -u 10001 appuser
+
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
 WORKDIR /app
 
 COPY . .
+
+# App writes device.json / onboard-token.json under ./data and devices-secret.yaml
+# under ./resources at runtime, so the app dir must be writable by the runtime user.
+RUN chown -R appuser:appuser /app
+
+USER appuser
 
 CMD ["kopf", "run", "main.py"]
