@@ -58,8 +58,8 @@ fi
  # shellcheck disable=2016
 echo Processing with deviceid="${deviceid}" gatewayid="${gatewayid}" keycloakurl="${keycloakurl}" realmid="${realmid}"
 
-if [ ! -d ../data ]; then
-  mkdir ../data
+if [ ! -d "${DATA_DIR}" ]; then
+  mkdir -p "${DATA_DIR}"
 fi
 
 #Check if Jq is installed or not 
